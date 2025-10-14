@@ -1,16 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, FlatList, SafeAreaView, Linking } from 'react-native';
 
-// Importamos os nossos "contratos" de tipos para saber a forma dos dados
 import { MarketType, OfferType } from '../types/entities'; 
 
-// Definimos as propriedades que este componente irá receber
 type OffersModalProps = {
-  market: MarketType | null; // O mercado selecionado, ou nulo se nenhum estiver selecionado
-  onClose: () => void;      // A função a ser chamada para fechar o modal
+  market: MarketType | null; 
+  onClose: () => void;     
 };
 
-// Componente para renderizar cada item de oferta na lista
 const OfferItem = ({ item }: { item: OfferType }) => (
   <View style={styles.offerItem}>
     <Text style={styles.offerProduct}>{item.product_name}</Text>
@@ -19,12 +16,10 @@ const OfferItem = ({ item }: { item: OfferType }) => (
 );
 
 const OffersModal = ({ market, onClose }: OffersModalProps) => {
-  // Se não houver nenhum mercado selecionado, não mostramos nada.
   if (!market) {
     return null;
   }
 
-  // Função para abrir o Google Maps
   const handleOpenMaps = () => {
     const url = `google.navigation:q=${market.latitude},${market.longitude}`;
     Linking.openURL(url);
@@ -34,7 +29,7 @@ const OffersModal = ({ market, onClose }: OffersModalProps) => {
     <Modal
       animationType="slide"
       transparent={true}
-      visible={market !== null} // O modal é visível se 'market' não for nulo
+      visible={market !== null} 
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
@@ -62,7 +57,6 @@ const OffersModal = ({ market, onClose }: OffersModalProps) => {
   );
 };
 
-// Estilos para um visual moderno e limpo
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,

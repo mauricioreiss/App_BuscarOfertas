@@ -1,0 +1,44 @@
+# Ficheiros de Sistema Operativo
+.DS_Store
+Thumbs.db
+
+# Ficheiros de IDEs e Editores
+.vscode/
+*.swp
+
+# Ficheiros de ambiente (boas práticas para guardar chaves de API, etc.)
+.env
+*.env.*
+!*.env.example
+
+# --- Front-End (React Native / Expo) ---
+
+# Dependências do Node.js
+node_modules/
+
+# Logs
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Pasta de cache e build do Expo
+.expo/
+
+# --- Back-End (Python / FastAPI) ---
+
+# Ambiente Virtual do Python
+venv/
+.venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Ficheiros de cache e compilados do Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ficheiro da nossa base de dados local SQLite
+# (Não queremos enviar a base de dados para o Git, apenas o código para a criar)
+sql_app.db
