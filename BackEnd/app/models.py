@@ -1,13 +1,12 @@
 from sqlalchemy import Column, Integer, String,Float,ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
+from .dataBase import Base
 
 
 class Market(Base):
     __tablename__ = "markets"
     id = Column(Integer, primary_key=True, index=True)
+    google_place_id = Column(String, unique=True, index=True,nullable=False)
     name = Column(String, index=True)
     latitude = Column(Float)
     longitude = Column(Float)
