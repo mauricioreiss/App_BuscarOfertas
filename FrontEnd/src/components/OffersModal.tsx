@@ -1,21 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, FlatList, SafeAreaView, Linking } from 'react-native';
-
-import { MarketType, OfferType } from '../types/entities'; 
+import { View, Text, StyleSheet, Modal, Pressable, SafeAreaView, Linking, ScrollView, ActivityIndicator } from 'react-native';
+import { MarketType } from '../types/entities'; 
 
 type OffersModalProps = {
   market: MarketType | null; 
   onClose: () => void;     
+  isLoading: boolean;       
 };
 
-const OfferItem = ({ item }: { item: OfferType }) => (
-  <View style={styles.offerItem}>
-    <Text style={styles.offerProduct}>{item.product_name}</Text>
-    <Text style={styles.offerPrice}>R$ {item.price}</Text>
-  </View>
-);
-
-const OffersModal = ({ market, onClose }: OffersModalProps) => {
+const OffersModal = ({ market, onClose, isLoading }: OffersModalProps) => {
   if (!market) {
     return null;
   }
@@ -33,7 +26,9 @@ const OffersModal = ({ market, onClose }: OffersModalProps) => {
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
+        {}
         <SafeAreaView style={styles.modalContent}>
+          {/* Cabeçalho do Modal */}
           <View style={styles.header}>
             <Text style={styles.marketName}>{market.name}</Text>
             <Pressable onPress={onClose}>
@@ -41,13 +36,21 @@ const OffersModal = ({ market, onClose }: OffersModalProps) => {
             </Pressable>
           </View>
           
-          <FlatList
-            data={market.offers}
-            renderItem={({ item }) => <OfferItem item={item} />}
-            keyExtractor={(item) => item.id.toString()}
-            ListEmptyComponent={<Text style={styles.noOffersText}>Nenhuma oferta encontrada para este mercado.</Text>}
-          />
+          {}
+          <ScrollView style={styles.contentScrollView}>
+            {}
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#4CAF50" style={{ marginTop: 20 }}/>
+            ) : (
+              
+              <Text style={styles.offersText}>
+                {}
+                {market.offersText || "Nenhuma oferta encontrada ou ocorreu um erro ao buscar."}
+              </Text>
+            )}
+          </ScrollView>
 
+          {}
           <Pressable style={styles.mapsButton} onPress={handleOpenMaps}>
             <Text style={styles.mapsButtonText}>Ver Rotas no Google Maps</Text>
           </Pressable>
@@ -68,7 +71,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopRightRadius: 20,
     borderTopLeftRadius: 20,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   header: {
     flexDirection: 'row',
@@ -82,37 +87,27 @@ const styles = StyleSheet.create({
   marketName: {
     fontSize: 22,
     fontWeight: 'bold',
+    flex: 1, 
   },
   closeButtonText: {
     fontSize: 24,
     color: '#888',
+    marginLeft: 10,
   },
-  offerItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f2f2f2',
+  contentScrollView: {
+    flex: 1,
   },
-  offerProduct: {
+  offersText: {
     fontSize: 16,
-  },
-  offerPrice: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
-  noOffersText: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: 'gray',
+    lineHeight: 24, 
+    color: '#333',
   },
   mapsButton: {
     backgroundColor: '#4CAF50',
     borderRadius: 50,
     paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   mapsButtonText: {
     color: 'white',
@@ -122,3 +117,4 @@ const styles = StyleSheet.create({
 });
 
 export default OffersModal;
+

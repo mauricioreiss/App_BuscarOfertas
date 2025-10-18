@@ -4,11 +4,13 @@ import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 
 import OffersModal from '../src/components/OffersModal';
-import { MarketType, OfferType } from '../src/types/entities';
+import { MarketType } from '../src/types/entities';
+
+const API_BASE_URL = 'URL CloudFlared para eu fazer o tunelamento ate eu dokerizar';
 
 type OsmMarketType = {
   id: number;
-  tags: { name: string };
+  tags: { name: string; 'addr:suburb'?: string; 'addr:city'?: string };
   lat: number;
   lon: number;
   center?: { lat: number; lon: number };
@@ -20,6 +22,7 @@ const MapScreen = () => {
   const [mapRegion, setMapRegion] = useState<Region | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<MarketType | null>(null);
+  const [isFetchingOffers, setIsFetchingOffers] = useState(false);
 
   useEffect(() => {
     const setupMapAndFetchPlaces = async () => {
@@ -31,22 +34,10 @@ const MapScreen = () => {
         let currentLocation = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = currentLocation.coords;
 
-        setMapRegion({
-          latitude,
-          longitude,
-          latitudeDelta: 0.04,
-          longitudeDelta: 0.02,
-        });
+        setMapRegion({ latitude, longitude, latitudeDelta: 0.04, longitudeDelta: 0.02 });
 
-        const radius = 5000; 
-        const overpassQuery = `
-          [out:json][timeout:25];
-          (
-            node["shop"="supermarket"](around:${radius},${latitude},${longitude});
-            way["shop"="supermarket"](around:${radius},${latitude},${longitude});
-          );
-          out center;
-        `;
+        const radius = 3000; // 3km
+        const overpassQuery = `[out:json];(node["shop"="supermarket"](around:${radius},${latitude},${longitude});way["shop"="supermarket"](around:${radius},${latitude},${longitude}););out center;`;
         const overpassUrl = "https://overpass-api.de/api/interpreter";
         
         const response = await fetch(overpassUrl, { method: 'POST', body: overpassQuery });
@@ -58,63 +49,71 @@ const MapScreen = () => {
         
         const formattedMarkers: MarketType[] = data.elements
           .filter((element: OsmMarketType) => element.tags?.name)
-          .map((element: OsmMarketType) => {
-            const lat = element.type === 'node' ? element.lat : element.center!.lat;
-            const lon = element.type === 'node' ? element.lon : element.center!.lon;
-            return {
+          .map((element: OsmMarketType) => ({
               id: element.id,
               name: element.tags.name,
-              latitude: lat,
-              longitude: lon,
-              offers: [], 
-            };
-          });
-
+              bairro: element.tags['addr:suburb'] || '',
+              cidade: element.tags['addr:city'] || 'Sua Cidade Padrão', // Ex: Sumaré
+              latitude: element.type === 'node' ? element.lat : element.center!.lat,
+              longitude: element.type === 'node' ? element.lon : element.center!.lon,
+          }));
         setMarkers(formattedMarkers);
-
       } catch (error: any) {
-        console.error("ERRO DETALHADO NO SETUP:", error);
         setErrorMsg(error.message || 'Não foi possível carregar os dados do mapa');
       }
     };
-
     setupMapAndFetchPlaces();
   }, []);
 
   async function handleMarkerPress(market: MarketType) {
-    setSelectedMarket({ ...market, offers: [] }); 
+    setIsFetchingOffers(true);
+    setSelectedMarket({ ...market, offersText: "A buscar ofertas com a IA..." }); 
+
     try {
-      const apiUrl = `https://behavioral-imaging-excellence-startup.trycloudflare.com/offers/${market.id}`;
-      
-      const response = await fetch(apiUrl);
-      if (response.status === 404) {
-        console.log(`Nenhuma oferta encontrada na nossa base de dados para: ${market.name}`);
-        return; 
-      }
+      const query = {
+        market_name: market.name,
+        bairro: market.bairro || "",
+        cidade: market.cidade || "Sumaré",
+      };
+
+      const response = await fetch(`${API_BASE_URL}/ai/fetch-offers-text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(query),
+      });
+
       if (!response.ok) {
-        throw new Error(`Erro ao buscar ofertas da nossa API: ${response.status}`);
+        throw new Error(`Erro na API: ${response.status} ${await response.text()}`);
       }
       
-      const offersData: OfferType[] = await response.json();
+      const offersText: string = await response.text();
       
-      setSelectedMarket({ ...market, offers: offersData });
+      setSelectedMarket({ ...market, offersText: offersText });
 
     } catch (error) {
-      console.error("Erro ao buscar ofertas da nossa API:", error);
+      const errorMessage = (error as Error).message || "Falha ao buscar ofertas.";
+      console.error("Erro ao buscar ofertas com a IA:", error);
+      setSelectedMarket({ ...market, offersText: `Erro: ${errorMessage}` });
+    } finally {
+      setIsFetchingOffers(false);
     }
   }
 
-  if (!mapRegion) {
+  if (!mapRegion && !errorMsg) {
     return (<View style={styles.loader}><ActivityIndicator size="large" /><Text style={{ marginTop: 10 }}>A obter localização...</Text></View>);
   }
 
   if (errorMsg) {
-    return (<View style={styles.loader}><Text>{errorMsg}</Text></View>);
+    return (<View style={styles.loader}><Text style={{ color: 'red' }}>{errorMsg}</Text></View>);
   }
 
   return (
     <View style={styles.container}>
-      <MapView style={styles.map} initialRegion={mapRegion} showsUserLocation={true}>
+      <MapView
+        style={styles.map}
+        initialRegion={mapRegion}
+        showsUserLocation={true}
+      >
         {markers.map((market) => (
           <Marker
             key={market.id}
@@ -128,6 +127,7 @@ const MapScreen = () => {
       <OffersModal 
         market={selectedMarket} 
         onClose={() => setSelectedMarket(null)} 
+        isLoading={isFetchingOffers}
       />
     </View>
   );
