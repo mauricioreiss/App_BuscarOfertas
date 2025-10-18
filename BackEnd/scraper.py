@@ -1,119 +1,50 @@
 import sys
 import os
-import requests
-import pytesseract
 import google.generativeai as genai
-import json
-import re
-from PIL import Image
-from io import BytesIO
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 
-# --- CORREÇÃO DE CONTEXTO ---
+# Adiciona o diretório pai ao caminho de busca do Python (boa prática)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.dataBase import SessionLocal, engine
-from app import models
-
 # --- CONFIGURAÇÃO ---
-NOME_DO_MERCADO_ALVO = "GoodBom Supermercados Sumaré"
+# O script lê a sua chave da API a partir do ambiente do seu sistema
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # --------------------
 
-# --- INICIALIZAÇÃO DA IA ---
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-# --------------------------
-
-def find_offers_link_with_ai(market_name: str) -> str | None:
-    print(f"A usar a IA para encontrar o link de ofertas para: '{market_name}'...")
-    try:
-        # --- CORREÇÃO FINAL: Usamos o nome do modelo mais compatível ---
-        model = genai.GenerativeModel('gemini-1.0-pro')
-        # -----------------------------------------------------------
-        prompt = f"Qual é o URL exato da página de ofertas, promoções, tabloides ou jornal do '{market_name}'? Retorne apenas o URL e nada mais."
-        response = model.generate_content(prompt)
-        match = re.search(r'https?://[^\s]+', response.text)
-        if match:
-            offers_url = match.group(0)
-            print(f"IA encontrou o link de ofertas: {offers_url}")
-            return offers_url
-        else:
-            print("ERRO: A IA não conseguiu encontrar um URL válido na sua resposta.")
-            return None
-    except Exception as e:
-        print(f"ERRO ao comunicar com a IA para encontrar o link: {e}")
-        return None
-
-def extract_text_from_leaflet_page(page_url: str) -> str | None:
-    print(f"A processar a página do panfleto: {page_url}")
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(page_url, headers=headers, timeout=15)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        image_tag = soup.find('img')
-        if not image_tag: return None
-        absolute_image_url = urljoin(page_url, image_tag.get('src'))
-        print(f"Link da imagem do panfleto: {absolute_image_url}")
-        img_response = requests.get(absolute_image_url, headers=headers, timeout=15)
-        img_response.raise_for_status()
-        image = Image.open(BytesIO(img_response.content))
-        text = pytesseract.image_to_string(image, lang='por')
-        print("Extração de texto do panfleto concluída.")
-        return text
-    except Exception as e:
-        print(f"ERRO ao processar a página do panfleto: {e}")
-        return None
-
-def structure_offers_with_ai(raw_text: str) -> list[dict] | None:
-    if not raw_text or not raw_text.strip(): return None
-    print("\nA enviar texto para a IA para estruturação...")
-    prompt = f"""
-    Analise o seguinte texto extraído de um panfleto de supermercado. Extraia todas as ofertas que conseguir identificar.
-    Retorne o resultado como uma lista de objetos JSON, onde cada objeto tem EXATAMENTE as seguintes chaves: "product_name" e "price".
-    - "product_name" deve ser o nome mais completo possível do produto.
-    - "price" deve ser o preço numérico, usando ponto como separador decimal (ex: 4.99).
-    - Ignore qualquer texto que não seja uma oferta clara. Se não encontrar nenhuma oferta, retorne uma lista vazia [].
-    Texto para analisar:
-    ---
-    {raw_text}
-    ---
+def test_gemini_prompt():
     """
-    try:
-        # --- CORREÇÃO FINAL AQUI TAMBÉM ---
-        model = genai.GenerativeModel('gemini-1.0-pro')
-        # ----------------------------------
-        response = model.generate_content(prompt)
-        cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
-        offers_list = json.loads(cleaned_response)
-        print(f"Sucesso! IA estruturou {len(offers_list)} ofertas.")
-        return offers_list
-    except Exception as e:
-        print(f"ERRO ao comunicar com a IA para estruturar as ofertas: {e}")
-        return None
-
-def main():
+    Função de teste que envia um único prompt para a API do Gemini e imprime a resposta bruta.
+    """
     if not GEMINI_API_KEY:
-        print("ERRO CRÍTICO: A variável de ambiente 'GEMINI_API_KEY' não foi definida.")
+        print("ERRO CRÍTICO: A variável de ambiente 'GEMINI_API_KEY' não está definida.")
+        print("Por favor, defina-a no seu terminal antes de executar o script.")
         return
 
-    offers_page_url = find_offers_link_with_ai(NOME_DO_MERCADO_ALVO)
-    
-    if offers_page_url:
-        raw_text = extract_text_from_leaflet_page(offers_page_url)
-        
-        if raw_text:
-            structured_offers = structure_offers_with_ai(raw_text)
-            
-            if structured_offers:
-                print("\n--- OFERTAS ESTRUTURADAS PELA IA ---")
-                for offer in structured_offers:
-                    print(f"- Produto: {offer.get('product_name')}, Preço: {offer.get('price')}")
-                print("-------------------------------------")
-            else:
-                print("\nA IA não conseguiu estruturar nenhuma oferta a partir do texto.")
+    try:
+        # Configura a API do Gemini com a sua chave
+        genai.configure(api_key=GEMINI_API_KEY)
 
+        # O seu prompt de teste exato
+        prompt = "traga-me uma lista em texto contendo algumas ofertas de produtos do supermercado goodbom do bairro matão da cidade de sumaré, monte uma lista com as 10 primeiras ofertas que aparecer e me retorne apenas a lista sem nenhum texto a mais como resposta"
+        
+        print(f"A enviar o seguinte prompt para a IA:\n'{prompt}'")
+        
+        # Usamos o nome do modelo mais recente e poderoso
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        # Geramos o conteúdo
+        response = model.generate_content(prompt)
+        
+        # --- O PASSO MAIS IMPORTANTE ---
+        # Imprimimos a resposta de texto EXATAMENTE como ela veio da IA, sem tentar processá-la.
+        print("\n--- RESPOSTA BRUTA DA IA ---")
+        print(response.text)
+        print("--- FIM DA RESPOSTA ---")
+
+    except Exception as e:
+        # Se ocorrer qualquer erro durante a chamada à API, ele será mostrado aqui
+        print(f"\n!!! OCORREU UM ERRO AO COMUNICAR COM A IA !!!")
+        print(e)
+
+# Este bloco garante que o código só é executado quando o ficheiro é chamado diretamente
 if __name__ == "__main__":
-    main()
+    test_gemini_prompt()
